@@ -160,13 +160,23 @@ function setupTimeline() {
   slider.limitslider({
     values: [0],
     max: MAX_SECONDS * MAX_FPS,
+    label: function(value) {
+      const index = slider.limitslider('values').slice(1).indexOf(value);
+      return index >= 0 ? index : '';
+    }
   });
   $('.ui-slider-handle').first().click(function(e) {
     if (e.shiftKey) {
+      const values = slider.limitslider('values');
+      if (values.slice(1).indexOf(values[0]) >= 0) {
+        // Avoid adding overlapping keyframes.
+        return;
+      }
+
       const handleId = $('.ui-slider-handle').length;
       const keyframeId = handleId - 1;
       optionsArray[keyframeId] = getCurrentOptions();
-      slider.limitslider('insert', null, slider.limitslider('values')[0]);
+      slider.limitslider('insert', null, values[0]);
       $('.ui-slider-handle').last().click(function(e) {
         $('.ui-slider-handle').removeClass('active');
         freezeOptions();
@@ -181,10 +191,11 @@ function setupTimeline() {
   });
   $(document).mousemove(function(e) {
     const newTime = slider.limitslider('values')[0] / MAX_FPS;
-    if (newTime !== time) {
-      $('.ui-slider-handle').removeClass('active');
-      freezeOptions();
+    if (newTime === time) {
+      return;
     }
+    $('.ui-slider-handle').removeClass('active');
+    freezeOptions();
     time = newTime;
   });
 }
