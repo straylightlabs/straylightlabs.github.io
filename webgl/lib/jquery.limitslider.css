@@ -1,0 +1,21 @@
+.ui-slider-horizontal {
+  border-radius: 2px;
+  height: 2px;
+}
+
+.ui-slider-horizontal .ui-slider-handle {
+  border-width: 3px;
+  top: -12px;
+  width: 10px;
+}
+
+.ui-slider-horizontal .ui-slider-handle.active {
+  border-color: #d37b93;
+}
+
+.ui-slider-horizontal .ui-slider-handle:first-child {
+  border-width: 3px;
+  border-color: #3991fa;
+  z-index: 1000;
+}
+

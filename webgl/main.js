@@ -4,6 +4,8 @@ var camera;
 var mesh;
 var material;
 
+const MAX_SECONDS = 10.0;
+const MAX_FPS = 60.0;
 const MIX_METHODS = {
   Average: 0,
   Additive: 1,
@@ -11,9 +13,8 @@ const MIX_METHODS = {
   Screen: 3,
 };
 
-var options = {
+var activeOptions = {
   background: '#000000',
-  stopTime: false,
   planeWidth: 100.0,
   planeHeight: 100.0,
   planeWidthSegments: 100,
@@ -50,8 +51,11 @@ var options = {
   chromaticAberrationStrength: 0.2,
   chromaticAberrationMix: 1,
 };
+var optionsArray = [];
 var stats;
 var controls;
+var slider;
+var gui;
 
 var orthoScene;
 var orthoCamera;
@@ -59,7 +63,7 @@ var orthoQuad;
 var effectTexture;
 var effectMaterial;
 
-var start = Date.now();
+var time = 0;
 
 function init() {
   scene = new THREE.Scene();
@@ -90,6 +94,7 @@ function init() {
   });
 
   setupGui();
+  setupTimeline();
 
   stats = new Stats();
   document.body.appendChild(stats.domElement);
@@ -102,58 +107,162 @@ function init() {
 }
 
 function setupGui() {
-  var gui = new dat.GUI();
+  gui = new dat.GUI();
   var folder = gui.addFolder("Environment");
-  folder.addColor(options, "background").onChange(function(color) {
-    scene.background = new THREE.Color(color);
-  });
-  folder.add(options, "stopTime");
+  folder.addColor(activeOptions, "background").listen();
   folder = gui.addFolder("Geometry");
-  folder.add(options, "planeWidth", 1.0, 200.0).onChange(resetGeometry);
-  folder.add(options, "planeHeight", 1.0, 200.0).onChange(resetGeometry);
-  folder.add(options, "planeHeightSegments", 1, 200).onChange(resetGeometry);
-  folder.add(options, "planeWidthSegments", 1, 200).onChange(resetGeometry);
-  folder.add(options, "sphere").onFinishChange(resetGeometry);
-  folder.add(options, "sphereRadius", 1.0, 100.0).onChange(resetGeometry);
+  folder.add(activeOptions, "planeWidth", 1.0, 200.0).onChange(resetGeometry);
+  folder.add(activeOptions, "planeHeight", 1.0, 200.0).onChange(resetGeometry);
+  folder.add(activeOptions, "planeHeightSegments", 1, 200).onChange(resetGeometry);
+  folder.add(activeOptions, "planeWidthSegments", 1, 200).onChange(resetGeometry);
+  folder.add(activeOptions, "sphere").onFinishChange(resetGeometry);
+  folder.add(activeOptions, "sphereRadius", 1.0, 100.0).onChange(resetGeometry);
   folder = gui.addFolder("Bump Noise");
-  folder.add(options, "bumpNoiseFrequency", 0.0, 0.2);
-  folder.add(options, "bumpNoiseAmplitude", 0.0, 30.0);
-  folder.add(options, "bumpNoiseSpeed", 0.0, 10.0);
+  folder.add(activeOptions, "bumpNoiseFrequency", 0.0, 0.2).listen();
+  folder.add(activeOptions, "bumpNoiseAmplitude", 0.0, 30.0).listen();
+  folder.add(activeOptions, "bumpNoiseSpeed", 0.0, 10.0).listen();
   folder = gui.addFolder("Material");
-  folder.add(options, "redNoiseFrequency", 0.0, 0.1);
-  folder.add(options, "redNoiseAmplitude", 0.0, 5.0);
-  folder.add(options, "redNoiseSpeed", 0.0, 10.0);
-  folder.add(options, "greenNoiseFrequency", 0.0, 0.1);
-  folder.add(options, "greenNoiseAmplitude", 0.0, 5.0);
-  folder.add(options, "greenNoiseSpeed", 0.0, 10.0);
-  folder.add(options, "blueNoiseFrequency", 0.0, 0.1);
-  folder.add(options, "blueNoiseAmplitude", 0.0, 5.0);
-  folder.add(options, "blueNoiseSpeed", 0.0, 10.0);
-  folder.add(options, "whiteNoiseFrequency", 0.0, 0.1);
-  folder.add(options, "whiteNoiseAmplitude", 0.0, 5.0);
-  folder.add(options, "whiteNoiseSpeed", 0.0, 10.0);
-  folder.add(options, "overExposure");
-  folder.add(options, "useImage");
+  folder.add(activeOptions, "redNoiseFrequency", 0.0, 0.1).listen();
+  folder.add(activeOptions, "redNoiseAmplitude", 0.0, 5.0).listen();
+  folder.add(activeOptions, "redNoiseSpeed", 0.0, 10.0).listen();
+  folder.add(activeOptions, "greenNoiseFrequency", 0.0, 0.1).listen();
+  folder.add(activeOptions, "greenNoiseAmplitude", 0.0, 5.0).listen();
+  folder.add(activeOptions, "greenNoiseSpeed", 0.0, 10.0).listen();
+  folder.add(activeOptions, "blueNoiseFrequency", 0.0, 0.1).listen();
+  folder.add(activeOptions, "blueNoiseAmplitude", 0.0, 5.0).listen();
+  folder.add(activeOptions, "blueNoiseSpeed", 0.0, 10.0).listen();
+  folder.add(activeOptions, "whiteNoiseFrequency", 0.0, 0.1).listen();
+  folder.add(activeOptions, "whiteNoiseAmplitude", 0.0, 5.0).listen();
+  folder.add(activeOptions, "whiteNoiseSpeed", 0.0, 10.0).listen();
+  folder.add(activeOptions, "overExposure").listen();
+  folder.add(activeOptions, "useImage").listen();
   folder = gui.addFolder("After Effects");
-  folder.add(options, "invert");
-  folder.add(options, "scanline");
-  folder.add(options, "vignette");
-  folder.add(options, "displacement");
-  folder.add(options, "displacementFrequency", 0, 0.01);
-  folder.add(options, "displacementAmplitude", 0, 2000);
-  folder.add(options, "zoomBlur");
-  folder.add(options, "zoomBlurStrength", 0.0, 1.0);
-  folder.add(options, "zoomBlurMix", MIX_METHODS);
-  folder.add(options, "chromaticAberration");
-  folder.add(options, "chromaticAberrationStrength", 0.0, 1.0);
-  folder.add(options, "chromaticAberrationMix", MIX_METHODS);
-  gui.remember(options);
+  folder.add(activeOptions, "invert").listen();
+  folder.add(activeOptions, "scanline").listen();
+  folder.add(activeOptions, "vignette").listen();
+  folder.add(activeOptions, "displacement").listen();
+  folder.add(activeOptions, "displacementFrequency", 0, 0.01).listen();
+  folder.add(activeOptions, "displacementAmplitude", 0, 2000).listen();
+  folder.add(activeOptions, "zoomBlur").listen();
+  folder.add(activeOptions, "zoomBlurStrength", 0.0, 1.0).listen();
+  folder.add(activeOptions, "zoomBlurMix", MIX_METHODS).listen();
+  folder.add(activeOptions, "chromaticAberration").listen();
+  folder.add(activeOptions, "chromaticAberrationStrength", 0.0, 1.0).listen();
+  folder.add(activeOptions, "chromaticAberrationMix", MIX_METHODS).listen();
+}
+
+function setupTimeline() {
+  slider = $('<div />').appendTo($('body'));
+  slider.css('position', 'absolute');
+  slider.css('left', 20);
+  slider.css('bottom', 20);
+  slider.css('width', 700);
+  slider.limitslider({
+    values: [0],
+    max: MAX_SECONDS * MAX_FPS,
+  });
+  $('.ui-slider-handle').first().click(function(e) {
+    if (e.shiftKey) {
+      const handleId = $('.ui-slider-handle').length;
+      const keyframeId = handleId - 1;
+      optionsArray[keyframeId] = getCurrentOptions();
+      slider.limitslider('insert', null, slider.limitslider('values')[0]);
+      $('.ui-slider-handle').last().click(function(e) {
+        $('.ui-slider-handle').removeClass('active');
+        freezeOptions();
+        $(this).addClass('active');
+        activateOptions(keyframeId);
+        if (e.altKey) {
+          slider.limitslider('remove', handleId);
+          optionsArray.splice(keyframeId, 1);
+        }
+      });
+    }
+  });
+  $(document).mousemove(function(e) {
+    const newTime = slider.limitslider('values')[0] / MAX_FPS;
+    if (newTime !== time) {
+      $('.ui-slider-handle').removeClass('active');
+      freezeOptions();
+    }
+    time = newTime;
+  });
+}
+
+function copy(src, dest) {
+  for (key in src) {
+    if (src[key] !== dest[key]) {
+      dest[key] = src[key];
+    }
+  }
+  return dest;
+}
+
+function freezeOptions() {
+  for (var i = 0; i < optionsArray.length; i++) {
+    optionsArray[i] = copy(optionsArray[i], {});
+  }
+}
+
+function activateOptions(index) {
+  copy(optionsArray[index], activeOptions);
+  optionsArray[index] = activeOptions;
+}
+
+function setCurrentTime(t) {
+  time = t;
+  const values = slider.limitslider('values');
+  values[0] = t * MAX_FPS;
+  slider.limitslider('option', { values: values });
+}
+
+function getCurrentOptions() {
+  if (slider === undefined) {
+    return activeOptions;
+  }
+  const keyframes = slider.limitslider('values').slice(1);
+  const currentFrame = parseInt(time * MAX_FPS);
+  var prevKeyframe;
+  var prevKeyframeOptions;
+  var nextKeyframe;
+  var nextKeyframeOptions;
+  keyframes.forEach(function(keyframe, index) {
+    if (keyframe < currentFrame && (prevKeyframe === undefined || prevKeyframe < keyframe)) {
+      prevKeyframe = keyframe;
+      prevKeyframeOptions = optionsArray[index];
+    }
+    if (keyframe >= currentFrame && (nextKeyframe === undefined || nextKeyframe > keyframe)) {
+      nextKeyframe = keyframe;
+      nextKeyframeOptions = optionsArray[index];
+    }
+  });
+  if (prevKeyframe === undefined && nextKeyframe === undefined) {
+    return activeOptions;
+  }
+  if (prevKeyframe === undefined) {
+    return nextKeyframeOptions;
+  }
+  if (nextKeyframe === undefined) {
+    return prevKeyframeOptions;
+  }
+  var currentOptions = {};
+  for (key in prevKeyframeOptions) {
+    var prevValue = prevKeyframeOptions[key];
+    var nextValue = nextKeyframeOptions[key];
+    currentOptions[key] =
+      (typeof prevValue !== 'number')
+      ? prevValue
+      : prevValue + (nextValue - prevValue) / (nextKeyframe - prevKeyframe) * (currentFrame - prevKeyframe);
+  }
+  return currentOptions;
 }
 
 function resetGeometry() {
+  console.info('resetGeometry() called');
   if (mesh) {
     scene.remove(mesh);
   }
+  const options = getCurrentOptions();
   if (!options.sphere) {
     mesh = new THREE.Mesh(new THREE.PlaneGeometry(
         options.planeWidth, options.planeHeight, options.planeWidthSegments, options.planeHeightSegments), material);
@@ -189,7 +298,14 @@ function resize() {
 }
 
 function update() {
-  const time = .00025 * (Date.now() - start);
+  const options = getCurrentOptions();
+
+  if (!$('.ui-slider-handle').hasClass('active')) {
+    copy(options, activeOptions);
+  }
+
+  scene.background = new THREE.Color(options.background);
+
   material.uniforms.time.value = time;
   material.uniforms.speed.value = options.bumpNoiseSpeed;
   material.uniforms.frequency.value = options.bumpNoiseFrequency;
@@ -230,6 +346,7 @@ function update() {
 }
 
 function render() {
+  const options = getCurrentOptions();
   if (!options.zoomBlur &&
       !options.chromaticAberration &&
       !options.invert &&
@@ -261,7 +378,7 @@ $(function() {
     var textureLoader = new THREE.TextureLoader();
     material = new THREE.ShaderMaterial({
       uniforms: {
-        tDiffuse: { type: "t", value: textureLoader.load('images/gradient.png') },
+        tDiffuse: { type: "t", value: textureLoader.load('images/gradient.jpg') },
         time: { type: "f", value: 0.0 },
         speed: { type: "f", value: 0.0 },
         frequency: { type: "f", value: 0.0 },
