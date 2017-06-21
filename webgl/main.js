@@ -64,6 +64,8 @@ var effectTexture;
 var effectMaterial;
 
 var time = 0;
+var timeInterval;
+var lastTime;
 
 function init() {
   scene = new THREE.Scene();
@@ -152,9 +154,36 @@ function setupGui() {
 }
 
 function setupTimeline() {
+  play = $('<span class="ui-icon ui-icon-play"></span>').appendTo($('body'));
+  play.css('position', 'absolute');
+  play.css('left', 20);
+  play.css('bottom', 9);
+  play.click(function(e) {
+    if (play.hasClass('ui-icon-play')) {
+      play.removeClass('ui-icon-play');
+      play.addClass('ui-icon-pause');
+      timeInterval = setInterval(function() {
+        const currentTime = new Date().getTime() / 1000;
+        if (lastTime !== undefined) {
+          var nextTime = time + (currentTime - lastTime);
+          if (nextTime > MAX_SECONDS) {
+            nextTime = 0.0;
+          }
+          setCurrentTime(nextTime);
+        }
+        lastTime = currentTime;
+      }, 1000 / MAX_FPS);
+    } else {
+      play.removeClass('ui-icon-pause');
+      play.addClass('ui-icon-play');
+      clearInterval(timeInterval);
+      lastTime = undefined;
+    }
+  });
+
   slider = $('<div />').appendTo($('body'));
   slider.css('position', 'absolute');
-  slider.css('left', 20);
+  slider.css('left', 70);
   slider.css('bottom', 20);
   slider.css('width', 700);
   slider.limitslider({
