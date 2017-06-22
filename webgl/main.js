@@ -130,15 +130,15 @@ function setupGui() {
   folder.add(activeOptions, "planeWidthSegments", 1, 200).onChange(resetGeometry);
   folder.add(activeOptions, "sphere").onFinishChange(resetGeometry);
   folder.add(activeOptions, "sphereRadius", 1.0, 100.0).onChange(resetGeometry);
-  folder.add(activeOptions, "rotationX", 0.0, 360.0);
-  folder.add(activeOptions, "rotationY", 0.0, 360.0);
-  folder.add(activeOptions, "rotationZ", 0.0, 360.0);
-  folder.add(activeOptions, "scaleX", 0.1, 10.0);
-  folder.add(activeOptions, "scaleY", 0.1, 10.0);
-  folder.add(activeOptions, "scaleZ", 0.1, 10.0);
-  folder.add(activeOptions, "positionX", -100.0, 100.0);
-  folder.add(activeOptions, "positionY", -100.0, 100.0);
-  folder.add(activeOptions, "positionZ", -100.0, 100.0);
+  folder.add(activeOptions, "rotationX", 0.0, 360.0).listen();
+  folder.add(activeOptions, "rotationY", 0.0, 360.0).listen();
+  folder.add(activeOptions, "rotationZ", 0.0, 360.0).listen();
+  folder.add(activeOptions, "scaleX", 0.1, 10.0).listen();
+  folder.add(activeOptions, "scaleY", 0.1, 10.0).listen();
+  folder.add(activeOptions, "scaleZ", 0.1, 10.0).listen();
+  folder.add(activeOptions, "positionX", -100.0, 100.0).listen();
+  folder.add(activeOptions, "positionY", -100.0, 100.0).listen();
+  folder.add(activeOptions, "positionZ", -100.0, 100.0).listen();
   folder = gui.addFolder("Bump Noise");
   folder.add(activeOptions, "bumpTime", 0.0, 50.0).listen();
   folder.add(activeOptions, "bumpNoiseFrequency", 0.0, 0.2).listen();
@@ -176,10 +176,27 @@ function setupGui() {
 }
 
 function setupTimeline() {
+  save = $('<span class="ui-icon ui-icon-star"></span>').appendTo($('body'));
+  save.css('position', 'absolute');
+  save.css('left', 20);
+  save.css('bottom', 10);
+  save.click(function(e) {
+    const tag = new Date().getTime();
+    localStorage.setItem(tag, JSON.stringify({
+      sliders: slider.limitslider('values'),
+      optionsArray: optionsArray,
+    }));
+    location.hash = '#' + tag;
+    save.addClass('disabled');
+    setTimeout(function() {
+      save.removeClass('disabled');
+    }, 2000);
+  });
+
   play = $('<span class="ui-icon ui-icon-play"></span>').appendTo($('body'));
   play.css('position', 'absolute');
-  play.css('left', 20);
-  play.css('bottom', 9);
+  play.css('left', 50);
+  play.css('bottom', 10);
   play.click(function(e) {
     if (play.hasClass('ui-icon-play')) {
       play.removeClass('ui-icon-play');
@@ -203,19 +220,50 @@ function setupTimeline() {
     }
   });
 
+  sliderValues = [0];
+  if (location.hash) {
+    const rawData = localStorage.getItem(location.hash.substr(1));
+    if (rawData) {
+      const data = JSON.parse(rawData);
+      sliderValues = data.sliders;
+      time = sliderValues[0] / MAX_FPS;
+      optionsArray = data.optionsArray;
+    }
+  }
+
   slider = $('<div />').appendTo($('body'));
   slider.css('position', 'absolute');
-  slider.css('left', 70);
+  slider.css('left', 100);
   slider.css('bottom', 20);
   slider.css('width', 700);
   slider.limitslider({
-    values: [0],
+    values: sliderValues,
     max: MAX_SECONDS * MAX_FPS,
     label: function(value) {
       const index = slider.limitslider('values').slice(1).indexOf(value);
       return index >= 0 ? index : '';
     }
   });
+
+  const clickHandler = function(e) {
+    const index = $(this).index();
+    console.log(index);
+    if (index === 0) {
+      return;
+    }
+    $('.ui-slider-handle').removeClass('active');
+    freezeOptions();
+
+    const optionIndex = index - 1;
+    $(this).addClass('active');
+    activateOptions(optionIndex);
+
+    if (e.altKey) {
+      slider.limitslider('remove', index);
+      optionsArray.splice(optionIndex, 1);
+    }
+  };
+
   $('.ui-slider-handle').first().click(function(e) {
     if (e.shiftKey) {
       const values = slider.limitslider('values');
@@ -224,22 +272,13 @@ function setupTimeline() {
         return;
       }
 
-      const handleId = $('.ui-slider-handle').length;
-      const keyframeId = handleId - 1;
-      optionsArray[keyframeId] = getCurrentOptions();
+      optionsArray.push(getCurrentOptions());
       slider.limitslider('insert', null, values[0]);
-      $('.ui-slider-handle').last().click(function(e) {
-        $('.ui-slider-handle').removeClass('active');
-        freezeOptions();
-        $(this).addClass('active');
-        activateOptions(keyframeId);
-        if (e.altKey) {
-          slider.limitslider('remove', handleId);
-          optionsArray.splice(keyframeId, 1);
-        }
-      });
+      $('.ui-slider-handle').last().click(clickHandler);
     }
   });
+  $('.ui-slider-handle').click(clickHandler);
+
   $(document).mousemove(function(e) {
     const newTime = slider.limitslider('values')[0] / MAX_FPS;
     if (newTime === time) {
