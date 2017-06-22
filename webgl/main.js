@@ -14,16 +14,27 @@ const MIX_METHODS = {
 };
 
 var activeOptions = {
-  background: '#000000',
+  background: '#ffffff',
   planeWidth: 100.0,
   planeHeight: 100.0,
   planeWidthSegments: 100,
   planeHeightSegments: 100,
   sphere: false,
   sphereRadius: 40.0,
+  rotationX: 100.0,
+  rotationY: 0.0,
+  rotationZ: 0.0,
+  scaleX: 1.0,
+  scaleY: 1.0,
+  scaleZ: 1.0,
+  positionX: 0.0,
+  positionY: 0.0,
+  positionZ: 0.0,
+  bumpTime: 0.0,
   bumpNoiseFrequency: 0.02,
   bumpNoiseAmplitude: 5.0,
   bumpNoiseSpeed: 0.5,
+  colorTime: 0.0,
   redNoiseFrequency: 0.015,
   redNoiseAmplitude: 1.0,
   redNoiseSpeed: 0.375,
@@ -119,11 +130,22 @@ function setupGui() {
   folder.add(activeOptions, "planeWidthSegments", 1, 200).onChange(resetGeometry);
   folder.add(activeOptions, "sphere").onFinishChange(resetGeometry);
   folder.add(activeOptions, "sphereRadius", 1.0, 100.0).onChange(resetGeometry);
+  folder.add(activeOptions, "rotationX", 0.0, 360.0);
+  folder.add(activeOptions, "rotationY", 0.0, 360.0);
+  folder.add(activeOptions, "rotationZ", 0.0, 360.0);
+  folder.add(activeOptions, "scaleX", 0.1, 10.0);
+  folder.add(activeOptions, "scaleY", 0.1, 10.0);
+  folder.add(activeOptions, "scaleZ", 0.1, 10.0);
+  folder.add(activeOptions, "positionX", -100.0, 100.0);
+  folder.add(activeOptions, "positionY", -100.0, 100.0);
+  folder.add(activeOptions, "positionZ", -100.0, 100.0);
   folder = gui.addFolder("Bump Noise");
+  folder.add(activeOptions, "bumpTime", 0.0, 50.0).listen();
   folder.add(activeOptions, "bumpNoiseFrequency", 0.0, 0.2).listen();
   folder.add(activeOptions, "bumpNoiseAmplitude", 0.0, 30.0).listen();
   folder.add(activeOptions, "bumpNoiseSpeed", 0.0, 10.0).listen();
   folder = gui.addFolder("Material");
+  folder.add(activeOptions, "colorTime", 0.0, 50.0).listen();
   folder.add(activeOptions, "redNoiseFrequency", 0.0, 0.1).listen();
   folder.add(activeOptions, "redNoiseAmplitude", 0.0, 5.0).listen();
   folder.add(activeOptions, "redNoiseSpeed", 0.0, 10.0).listen();
@@ -306,7 +328,6 @@ function resetGeometry() {
   if (!options.sphere) {
     mesh = new THREE.Mesh(new THREE.PlaneGeometry(
         options.planeWidth, options.planeHeight, options.planeWidthSegments, options.planeHeightSegments), material);
-    mesh.rotation.x = Math.PI / 1.8;
     scene.add(mesh);
   } else {
     mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(
@@ -346,10 +367,21 @@ function update() {
 
   scene.background = new THREE.Color(options.background);
 
-  material.uniforms.time.value = time;
+  mesh.rotation.x = options.rotationX / 180 * Math.PI;
+  mesh.rotation.y = options.rotationY / 180 * Math.PI;
+  mesh.rotation.z = options.rotationZ / 180 * Math.PI;
+  mesh.scale.x = options.scaleX;
+  mesh.scale.y = options.scaleY;
+  mesh.scale.z = options.scaleZ;
+  mesh.position.x = options.positionX;
+  mesh.position.y = options.positionY;
+  mesh.position.z = options.positionZ;
+
+  material.uniforms.time.value = options.bumpTime;
   material.uniforms.speed.value = options.bumpNoiseSpeed;
   material.uniforms.frequency.value = options.bumpNoiseFrequency;
   material.uniforms.amplitude.value = options.bumpNoiseAmplitude;
+  material.uniforms.cTime.value = options.colorTime;
   material.uniforms.rSpeed.value = options.redNoiseSpeed;
   material.uniforms.rFrequnecy.value = options.redNoiseFrequency;
   material.uniforms.rAmplitude.value = options.redNoiseAmplitude;
@@ -365,7 +397,7 @@ function update() {
   material.uniforms.wOverExposed.value = options.overExposure;
   material.uniforms.useImage.value = options.useImage;
 
-  effectMaterial.uniforms.time.value = time;
+  // effectMaterial.uniforms.time.value = time;
   effectMaterial.uniforms.displacement.value = options.displacement;
   effectMaterial.uniforms.displacementFrequency.value = options.displacementFrequency;
   effectMaterial.uniforms.displacementAmplitude.value = options.displacementAmplitude;
@@ -423,6 +455,7 @@ $(function() {
         speed: { type: "f", value: 0.0 },
         frequency: { type: "f", value: 0.0 },
         amplitude: { type: "f", value: 0.0 },
+        cTime: { type: "f", value: 0.0 },
         rSpeed: { type: "f", value: 0.0 },
         rFrequnecy: { type: "f", value: 0.0 },
         rAmplitude: { type: "f", value: 0.0 },
