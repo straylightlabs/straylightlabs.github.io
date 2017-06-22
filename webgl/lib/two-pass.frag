@@ -5,6 +5,12 @@ uniform vec2 vResolution;
 uniform int displacement;
 uniform float displacementFrequency;
 uniform float displacementAmplitude;
+uniform int hole;
+uniform int holeInverted;
+uniform vec3 holeColor;
+uniform vec2 holeCenter;
+uniform float holeRadius;
+uniform float holeDepth;
 uniform int zoomBlur;
 uniform float zoomBlurStrength;
 uniform int zoomBlurMix;
@@ -70,9 +76,35 @@ vec4 getDisplacement(float frequency, float amplitude) {
     return texture2D(tDiffuse, p / vResolution);
 }
 
+vec4 getHoled(vec2 center, float radius, float depth) {
+    float dimension = max(vResolution.x, vResolution.y);
+    vec2 uv = vec2(0.5, 0.5) + (gl_FragCoord.xy - vResolution * 0.5) / vec2(dimension);
+    float r = (radius - distance(center, uv)) / radius;
+    vec2 coord = gl_FragCoord.xy / vResolution;
+    if (holeInverted == 0) {
+        if (r < 0.0) {
+            return vec4(holeColor, 1.0);
+        }
+        if (r > holeDepth) {
+            return texture2D(tDiffuse, coord);
+        }
+        return texture2D(tDiffuse, coord + (coord - center) * (1.0 - r / holeDepth));
+    } else {
+        if (r < 0.0) {
+            return texture2D(tDiffuse, coord);
+        }
+        if (r > holeDepth) {
+            return vec4(holeColor, 1.0);
+        }
+        return texture2D(tDiffuse, coord + (center - coord) * r / holeDepth);
+    }
+}
+
 void main() {
     if (displacement > 0) {
         gl_FragColor = getDisplacement(displacementFrequency, displacementAmplitude);
+    } else if (hole > 0) {
+        gl_FragColor = getHoled(holeCenter, holeRadius, holeDepth);
     } else {
         gl_FragColor = texture2D(tDiffuse, vUv);
     }

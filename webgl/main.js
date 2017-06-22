@@ -55,6 +55,13 @@ var activeOptions = {
   displacement: false,
   displacementFrequency: 0.005,
   displacementAmplitude: 300,
+  hole: false,
+  holeInverted: false,
+  holeColor: '#ffffff',
+  holeCenterU: 0.5,
+  holeCenterV: 0.5,
+  holeRadius: 0.1,
+  holeDepth: 0.2,
   zoomBlur: false,
   zoomBlurStrength: 0.75,
   zoomBlurMix: 3,
@@ -167,6 +174,13 @@ function setupGui() {
   folder.add(activeOptions, "displacement").listen();
   folder.add(activeOptions, "displacementFrequency", 0, 0.01).listen();
   folder.add(activeOptions, "displacementAmplitude", 0, 2000).listen();
+  folder.add(activeOptions, "hole").listen();
+  folder.add(activeOptions, "holeInverted").listen();
+  folder.addColor(activeOptions, "holeColor").listen();
+  folder.add(activeOptions, "holeCenterU", 0.0, 1.0).listen();
+  folder.add(activeOptions, "holeCenterV", 0.0, 1.0).listen();
+  folder.add(activeOptions, "holeRadius", 0.01, 1.0).listen();
+  folder.add(activeOptions, "holeDepth", 0.01, 1.0).listen();
   folder.add(activeOptions, "zoomBlur").listen();
   folder.add(activeOptions, "zoomBlurStrength", 0.0, 1.0).listen();
   folder.add(activeOptions, "zoomBlurMix", MIX_METHODS).listen();
@@ -440,6 +454,13 @@ function update() {
   effectMaterial.uniforms.displacement.value = options.displacement;
   effectMaterial.uniforms.displacementFrequency.value = options.displacementFrequency;
   effectMaterial.uniforms.displacementAmplitude.value = options.displacementAmplitude;
+  effectMaterial.uniforms.hole.value = options.hole;
+  effectMaterial.uniforms.holeInverted.value = options.holeInverted;
+  effectMaterial.uniforms.holeColor.value = new THREE.Color(options.holeColor);
+  effectMaterial.uniforms.holeCenter.value =
+      new THREE.Vector2(options.holeCenterU, options.holeCenterV);
+  effectMaterial.uniforms.holeRadius.value = options.holeRadius;
+  effectMaterial.uniforms.holeDepth.value = options.holeDepth;
   effectMaterial.uniforms.zoomBlur.value = options.zoomBlur;
   effectMaterial.uniforms.zoomBlurStrength.value = options.zoomBlurStrength;
   effectMaterial.uniforms.zoomBlurMix.value = options.zoomBlurMix;
@@ -463,7 +484,8 @@ function render() {
       !options.invert &&
       !options.scanline &&
       !options.vignette &&
-      !options.displacement) {
+      !options.displacement &&
+      !options.hole) {
     renderer.render(scene, camera);
     return;
   }
@@ -523,6 +545,12 @@ $(function() {
         displacement: { type: "i", value: 0 },
         displacementFrequency: { type: "f", value: 0.0 },
         displacementAmplitude: { type: "f", value: 0 },
+        hole: { type: "i", value: 0 },
+        holeInverted: { type: "i", value: 0 },
+        holeColor: { type: "v3", value: new THREE.Vector3(1, 1, 1) },
+        holeCenter: { type: "v2", value: new THREE.Vector2(1, 1) },
+        holeRadius: { type: "f", value: 0.0 },
+        holeDepth: { type: "f", value: 0.0 },
         zoomBlur: { type: "i", value: 0 },
         zoomBlurStrength: { type: "f", value: 0.0 },
         zoomBlurMix: { type: "i", value: 0 },
