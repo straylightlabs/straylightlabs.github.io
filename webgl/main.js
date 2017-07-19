@@ -7,10 +7,11 @@ var material;
 const MAX_SECONDS = 10.0;
 const MAX_FPS = 60.0;
 const MIX_METHODS = {
-  Average: 0,
-  Additive: 1,
-  Multiplicative: 2,
-  Screen: 3,
+  Exclusive: 0,
+  Average: 1,
+  Additive: 2,
+  Multiplicative: 3,
+  Screen: 4,
 };
 
 var activeOptions = {
@@ -64,10 +65,15 @@ var activeOptions = {
   holeDepth: 0.2,
   zoomBlur: false,
   zoomBlurStrength: 0.75,
-  zoomBlurMix: 3,
+  zoomBlurMix: 0,
+  triangleBlur: false,
+  triangleBlurStrength: 0.75,
+  triangleBlurMix: 0,
   chromaticAberration: false,
   chromaticAberrationStrength: 0.2,
   chromaticAberrationMix: 1,
+  hue: 0.0,
+  saturation: 0.0,
 };
 var optionsArray = [];
 var stats;
@@ -184,9 +190,14 @@ function setupGui() {
   folder.add(activeOptions, "zoomBlur").listen();
   folder.add(activeOptions, "zoomBlurStrength", 0.0, 1.0).listen();
   folder.add(activeOptions, "zoomBlurMix", MIX_METHODS).listen();
+  folder.add(activeOptions, "triangleBlur").listen();
+  folder.add(activeOptions, "triangleBlurStrength", 0.0, 50.0).listen();
+  folder.add(activeOptions, "triangleBlurMix", MIX_METHODS).listen();
   folder.add(activeOptions, "chromaticAberration").listen();
   folder.add(activeOptions, "chromaticAberrationStrength", 0.0, 1.0).listen();
   folder.add(activeOptions, "chromaticAberrationMix", MIX_METHODS).listen();
+  folder.add(activeOptions, "hue", -1.0, 1.0).listen();
+  folder.add(activeOptions, "saturation", -1.0, 1.0).listen();
 }
 
 function setupTimeline() {
@@ -464,12 +475,17 @@ function update() {
   effectMaterial.uniforms.zoomBlur.value = options.zoomBlur;
   effectMaterial.uniforms.zoomBlurStrength.value = options.zoomBlurStrength;
   effectMaterial.uniforms.zoomBlurMix.value = options.zoomBlurMix;
+  effectMaterial.uniforms.triangleBlur.value = options.triangleBlur;
+  effectMaterial.uniforms.triangleBlurStrength.value = options.triangleBlurStrength;
+  effectMaterial.uniforms.triangleBlurMix.value = options.triangleBlurMix;
   effectMaterial.uniforms.chromaticAberration.value = options.chromaticAberration;
   effectMaterial.uniforms.chromaticAberrationStrength.value = options.chromaticAberrationStrength;
   effectMaterial.uniforms.chromaticAberrationMix.value = options.chromaticAberrationMix;
   effectMaterial.uniforms.invert.value = options.invert;
   effectMaterial.uniforms.scanline.value = options.scanline;
   effectMaterial.uniforms.vignette.value = options.vignette;
+  effectMaterial.uniforms.hue.value = options.hue;
+  effectMaterial.uniforms.saturation.value = options.saturation;
 
   render();
 
@@ -478,18 +494,6 @@ function update() {
 }
 
 function render() {
-  const options = getCurrentOptions();
-  if (!options.zoomBlur &&
-      !options.chromaticAberration &&
-      !options.invert &&
-      !options.scanline &&
-      !options.vignette &&
-      !options.displacement &&
-      !options.hole) {
-    renderer.render(scene, camera);
-    return;
-  }
-
   renderer.render(scene, camera, effectTexture, true);
   orthoQuad.material.uniforms.tDiffuse.value = effectTexture.texture;
   renderer.render(orthoScene, orthoCamera);
@@ -554,12 +558,17 @@ $(function() {
         zoomBlur: { type: "i", value: 0 },
         zoomBlurStrength: { type: "f", value: 0.0 },
         zoomBlurMix: { type: "i", value: 0 },
+        triangleBlur: { type: "i", value: 0 },
+        triangleBlurStrength: { type: "f", value: 0.0 },
+        triangleBlurMix: { type: "i", value: 0 },
         chromaticAberration: { type: "i", value: 0 },
         chromaticAberrationStrength: { type: "f", value: 0.0 },
         chromaticAberrationMix: { type: "i", value: 0 },
         invert: { type: "i", value: 0 },
         scanline: { type: "i", value: 0 },
         vignette: { type: "i", value: 0 },
+        hue: { type: "f", value: 0 },
+        saturation: { type: "f", value: 0 },
       },
       vertexShader: twoPassVert[0],
       fragmentShader: pnoise[0] + twoPassFrag[0],
